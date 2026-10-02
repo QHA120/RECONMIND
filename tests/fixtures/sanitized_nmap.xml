@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<nmaprun scanner="nmap" args="nmap -sV --version-light -oX sanitized.xml 192.0.2.10" start="1735785600" startstr="Thu Jan  2 10:00:00 2025" version="7.99" xmloutputversion="1.05">
+  <host>
+    <status state="up" reason="syn-ack" reason_ttl="64"/>
+    <address addr="192.0.2.10" addrtype="ipv4"/>
+    <ports>
+      <port protocol="tcp" portid="22">
+        <state state="open" reason="syn-ack" reason_ttl="64"/>
+        <service name="ssh" product="OpenSSH" version="9.2p1" extrainfo="protocol 2.0"/>
+      </port>
+      <port protocol="tcp" portid="80">
+        <state state="open" reason="syn-ack" reason_ttl="64"/>
+        <service name="http" product="nginx" version="1.24.0"/>
+      </port>
+    </ports>
+  </host>
+  <runstats>
+    <finished time="1735785605" summary="Nmap done at Thu Jan  2 10:00:05 2025; 1 IP address (1 host up) scanned in 5.00 seconds" exit="success"/>
+    <hosts up="1" down="0" total="1"/>
+  </runstats>
+</nmaprun>

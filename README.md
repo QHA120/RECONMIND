@@ -7,6 +7,7 @@ RECONMIND is a defensive security research project designed to analyze structure
 ## Current status
 
 Phase 0 environment audit and initial Phase 1 lab validation are complete.
+Phase 2 now includes a minimal CLI MVP for Nmap XML ingestion.
 
 Validated:
 
@@ -20,12 +21,47 @@ Validated:
 
 Not yet implemented:
 
-- RECONMIND application code
-- Nmap XML parser
 - Database
 - Dashboard
 - AI provider integration
 - Automated report generation
+
+## Phase 2 CLI MVP (Nmap XML import)
+
+### Safety and authorization warning
+
+Use this tool only on systems where you have explicit authorization. The MVP imports observed scan artifacts and does **not** run autonomous scanning. Service observations are not equivalent to confirmed vulnerabilities.
+
+### Setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+### Import command
+
+```bash
+python -m reconmind import-nmap --input data/raw/metasploitable.xml --output data/processed/metasploitable.json
+```
+
+For the sanitized test fixture:
+
+```bash
+python -m reconmind import-nmap --input tests/fixtures/sanitized_nmap.xml --output data/processed/sanitized_nmap.json
+```
+
+### Expected JSON content
+
+The output JSON preserves observed data and includes:
+
+- Scan metadata (`scanner`, `args`, timing, runstats)
+- Hosts and addresses
+- Ports and protocols
+- Service names/products/versions when present
+- Source/evidence metadata showing where the artifact came from
 
 ## Safety boundary
 
