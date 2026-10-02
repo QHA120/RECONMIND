@@ -53,6 +53,14 @@ For the sanitized test fixture:
 python -m reconmind import-nmap --input tests/fixtures/sanitized_nmap.xml --output data/processed/sanitized_nmap.json
 ```
 
+### Summarize imported JSON
+
+```bash
+python -m reconmind summarize --input data/processed/metasploitable.json
+```
+
+This summary is deterministic observed Nmap service data and is not a confirmed vulnerability assessment.
+
 ### Expected JSON content
 
 The output JSON preserves observed data and includes:
