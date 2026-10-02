@@ -23,6 +23,16 @@ def _configure_logging(level: str) -> None:
     )
 
 
+def _positive_port(value: str) -> int:
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("port must be an integer") from exc
+    if not 1 <= port <= 65535:
+        raise argparse.ArgumentTypeError("port must be between 1 and 65535")
+    return port
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="reconmind", description="RECONMIND CLI")
     parser.add_argument(
@@ -54,6 +64,28 @@ def _build_parser() -> argparse.ArgumentParser:
         "--output",
         help="Optional report output path; defaults to stdout",
     )
+    summarize_parser.add_argument(
+        "--host",
+        action="append",
+        dest="hosts",
+        metavar="ADDRESS",
+        help="Include only hosts matching this address; may be repeated",
+    )
+    summarize_parser.add_argument(
+        "--port",
+        action="append",
+        type=_positive_port,
+        dest="ports",
+        metavar="PORT",
+        help="Include only hosts with this open port; may be repeated",
+    )
+    summarize_parser.add_argument(
+        "--service",
+        action="append",
+        dest="services",
+        metavar="NAME",
+        help="Include only hosts with this service name; may be repeated",
+    )
 
     return parser
 
@@ -83,7 +115,12 @@ def main(argv: list[str] | None = None) -> int:
         input_path = Path(args.input)
         LOGGER.info("summarize_started input=%s", input_path)
         try:
-            result = build_summary(input_path)
+            result = build_summary(
+                input_path,
+                host_filters=args.hosts,
+                port_filters=args.ports,
+                service_filters=args.services,
+            )
             report = format_summary(result, args.format)
             if args.output:
                 write_summary_output(report, Path(args.output))

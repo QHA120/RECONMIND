@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -44,7 +45,49 @@ def _read_json(input_path: Path) -> dict:
         raise SummaryInputError(f"Invalid JSON in {input_path}: {exc}") from exc
 
 
-def build_summary(input_path: Path) -> SummaryResult:
+def _matches_any(value: str, filters: Iterable[str] | None) -> bool:
+    values = list(filters or [])
+    return not values or value in values
+
+
+def _service_name(port: dict) -> str:
+    service = port.get("service")
+    if isinstance(service, dict) and isinstance(service.get("name"), str):
+        return service["name"]
+    return "unknown"
+
+
+def _host_matches(host: dict, host_filters: Iterable[str] | None) -> bool:
+    if not host_filters:
+        return True
+    addresses = {
+        address.get("address")
+        for address in host.get("addresses", [])
+        if isinstance(address, dict) and isinstance(address.get("address"), str)
+    }
+    return bool(addresses.intersection(host_filters))
+
+
+def _port_matches(
+    port: dict,
+    port_filters: Iterable[int] | None,
+    service_filters: Iterable[str] | None,
+) -> bool:
+    if port_filters and port.get("port") not in port_filters:
+        return False
+    if service_filters:
+        wanted = {service.lower() for service in service_filters}
+        if _service_name(port).lower() not in wanted:
+            return False
+    return True
+
+
+def build_summary(
+    input_path: Path,
+    host_filters: Iterable[str] | None = None,
+    port_filters: Iterable[int] | None = None,
+    service_filters: Iterable[str] | None = None,
+) -> SummaryResult:
     payload = _read_json(input_path)
     hosts_payload = payload.get("hosts")
     if not isinstance(hosts_payload, list):
@@ -52,8 +95,9 @@ def build_summary(input_path: Path) -> SummaryResult:
 
     hosts: list[HostSummary] = []
     for host in hosts_payload:
-        if not isinstance(host, dict):
+        if not isinstance(host, dict) or not _host_matches(host, host_filters):
             continue
+
         addresses = [
             address.get("address")
             for address in host.get("addresses", [])
@@ -66,14 +110,17 @@ def build_summary(input_path: Path) -> SummaryResult:
         open_ports_payload = [
             port
             for port in host.get("ports", [])
-            if isinstance(port, dict) and port.get("state") == "open"
+            if isinstance(port, dict)
+            and port.get("state") == "open"
+            and _port_matches(port, port_filters, service_filters)
         ]
+        if (port_filters or service_filters) and not open_ports_payload:
+            continue
+
         open_ports_payload.sort(
             key=lambda port: (
                 str(port.get("protocol", "")),
-                int(port.get("port"))
-                if isinstance(port.get("port"), int)
-                else float("inf"),
+                int(port.get("port")) if isinstance(port.get("port"), int) else float("inf"),
                 str(port.get("port", "")),
             )
         )
@@ -82,12 +129,8 @@ def build_summary(input_path: Path) -> SummaryResult:
         for port in open_ports_payload:
             port_number = port.get("port")
             protocol = port.get("protocol", "unknown")
+            service_name = _service_name(port)
             service = port.get("service")
-            service_name = (
-                service.get("name")
-                if isinstance(service, dict) and isinstance(service.get("name"), str)
-                else "unknown"
-            )
             details = []
             if isinstance(service, dict):
                 if isinstance(service.get("product"), str) and service.get("product"):
@@ -172,13 +215,9 @@ def write_summary_output(report: str, output_path: Path) -> None:
     try:
         parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        raise SummaryOutputError(
-            f"Failed to create output directory '{parent}': {exc}"
-        ) from exc
+        raise SummaryOutputError(f"Failed to create output directory '{parent}': {exc}") from exc
 
     try:
         output_path.write_text(report + "\n", encoding="utf-8")
     except OSError as exc:
-        raise SummaryOutputError(
-            f"Failed to write output file '{output_path}': {exc}"
-        ) from exc
+        raise SummaryOutputError(f"Failed to write output file '{output_path}': {exc}") from exc
