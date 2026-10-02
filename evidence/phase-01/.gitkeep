@@ -1,0 +1,15 @@
+# Phase 1 Evidence
+
+Place validated Phase 1 screenshots in this directory.
+
+Expected files:
+
+- `01-environment.png`
+- `01-environment-details.png`
+- `01-kali-nmap.png`
+- `02-kali-network.png`
+- `03-isolated-host-discovery.png`
+- `04-metasploitable-service-scan.png`
+- `05-nmap-xml-output.png`
+
+Do not add credentials, API keys, personal documents, or unrelated private network information.

@@ -1,0 +1,5 @@
+# Raw reconnaissance data
+
+Place authorized Nmap XML artifacts and other original scan outputs here after reviewing them for secrets and unintended scope information.
+
+The current artifact was generated in Kali at `/tmp/metasploitable.xml`. It has not been copied into this repository yet.
