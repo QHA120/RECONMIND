@@ -6,7 +6,12 @@ import sys
 from pathlib import Path
 
 from reconmind.nmap_import import NmapImportError, parse_nmap_xml, write_import_json
-from reconmind.summarize import SummaryError, build_summary, format_summary
+from reconmind.summarize import (
+    SummaryError,
+    build_summary,
+    format_summary,
+    write_summary_output,
+)
 
 LOGGER = logging.getLogger("reconmind")
 
@@ -39,6 +44,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "summarize", help="Summarize imported Nmap JSON service observations"
     )
     summarize_parser.add_argument("--input", required=True, help="Path to imported JSON input")
+    summarize_parser.add_argument(
+        "--format",
+        choices=["text", "markdown", "json"],
+        default="text",
+        help="Report format (default: text)",
+    )
+    summarize_parser.add_argument(
+        "--output",
+        help="Optional report output path; defaults to stdout",
+    )
 
     return parser
 
@@ -69,7 +84,11 @@ def main(argv: list[str] | None = None) -> int:
         LOGGER.info("summarize_started input=%s", input_path)
         try:
             result = build_summary(input_path)
-            print(format_summary(result))
+            report = format_summary(result, args.format)
+            if args.output:
+                write_summary_output(report, Path(args.output))
+            else:
+                print(report)
         except SummaryError as exc:
             LOGGER.error("summarize_failed error=%s", exc)
             print(f"Error: {exc}", file=sys.stderr)

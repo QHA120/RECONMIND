@@ -13,6 +13,10 @@ class SummaryInputError(SummaryError):
     """Raised for missing/unreadable/invalid JSON input."""
 
 
+class SummaryOutputError(SummaryError):
+    """Raised for output path creation/write failures."""
+
+
 @dataclass(frozen=True)
 class HostSummary:
     addresses: list[str]
@@ -98,7 +102,7 @@ def build_summary(input_path: Path) -> SummaryResult:
     return SummaryResult(hosts=hosts)
 
 
-def format_summary(result: SummaryResult) -> str:
+def _format_summary_text(result: SummaryResult) -> str:
     lines = [f"Hosts found: {len(result.hosts)}"]
     for index, host in enumerate(result.hosts, start=1):
         lines.append("")
@@ -108,3 +112,73 @@ def format_summary(result: SummaryResult) -> str:
     lines.append("")
     lines.append("Note: These are observed Nmap service data, not confirmed vulnerabilities.")
     return "\n".join(lines)
+
+
+def _format_summary_markdown(result: SummaryResult) -> str:
+    lines = ["# RECONMIND Summary", "", f"## Hosts found: {len(result.hosts)}"]
+    for index, host in enumerate(result.hosts, start=1):
+        lines.extend(
+            [
+                "",
+                f"### Host {index}: {', '.join(host.addresses) or 'unknown'}",
+                "",
+                f"**Open ports:** {len(host.open_ports)}",
+            ]
+        )
+        if host.open_ports:
+            lines.extend(["", "| Service observation |", "| --- |"])
+            lines.extend(f"| {port_entry} |" for port_entry in host.open_ports)
+        else:
+            lines.extend(["", "_No open ports observed._"])
+    lines.extend(
+        [
+            "",
+            "**Note:** These are observed Nmap service data, not confirmed vulnerabilities.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _format_summary_json(result: SummaryResult) -> str:
+    payload = {
+        "hosts_found": len(result.hosts),
+        "hosts": [
+            {
+                "index": index,
+                "addresses": host.addresses,
+                "open_ports": host.open_ports,
+            }
+            for index, host in enumerate(result.hosts, start=1)
+        ],
+        "note": "These are observed Nmap service data, not confirmed vulnerabilities.",
+    }
+    return json.dumps(payload, indent=2, sort_keys=True)
+
+
+def format_summary(result: SummaryResult, output_format: str = "text") -> str:
+    """Render a summary in the requested format."""
+    if output_format == "text":
+        return _format_summary_text(result)
+    if output_format == "markdown":
+        return _format_summary_markdown(result)
+    if output_format == "json":
+        return _format_summary_json(result)
+    raise SummaryError(f"Unsupported summary format: {output_format}")
+
+
+def write_summary_output(report: str, output_path: Path) -> None:
+    """Write a report, creating parent directories when necessary."""
+    parent = output_path.parent
+    try:
+        parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise SummaryOutputError(
+            f"Failed to create output directory '{parent}': {exc}"
+        ) from exc
+
+    try:
+        output_path.write_text(report + "\n", encoding="utf-8")
+    except OSError as exc:
+        raise SummaryOutputError(
+            f"Failed to write output file '{output_path}': {exc}"
+        ) from exc

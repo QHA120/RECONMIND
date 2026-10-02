@@ -55,9 +55,31 @@ python -m reconmind import-nmap --input tests/fixtures/sanitized_nmap.xml --outp
 
 ### Summarize imported JSON
 
+Text output remains the default:
+
 ```bash
 python -m reconmind summarize --input data/processed/metasploitable.json
 ```
+
+Generate a structured Markdown report:
+
+```bash
+python -m reconmind summarize \
+  --input data/processed/metasploitable.json \
+  --format markdown \
+  --output reports/metasploitable.md
+```
+
+Generate machine-readable JSON:
+
+```bash
+python -m reconmind summarize \
+  --input data/processed/metasploitable.json \
+  --format json \
+  --output reports/metasploitable.json
+```
+
+Without `--output`, the selected report is written to standard output. Output files create missing parent directories automatically. Logs are kept separate from report content, so JSON and Markdown reports can be redirected or saved safely.
 
 This summary is deterministic observed Nmap service data and is not a confirmed vulnerability assessment.
 

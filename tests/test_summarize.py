@@ -95,13 +95,7 @@ def test_cli_summarize_missing_optional_fields(
 
 def test_cli_summarize_missing_input_returns_error(capsys: pytest.CaptureFixture) -> None:
     exit_code = main(
-        [
-            "--log-level",
-            "ERROR",
-            "summarize",
-            "--input",
-            "/tmp/does-not-exist.json",
-        ]
+        ["--log-level", "ERROR", "summarize", "--input", "/tmp/does-not-exist.json"]
     )
     captured = capsys.readouterr()
 
@@ -127,3 +121,154 @@ def test_cli_summarize_invalid_json_returns_error(
 def test_cli_summarize_requires_input_argument() -> None:
     with pytest.raises(SystemExit):
         main(["summarize"])
+
+
+def test_cli_summarize_markdown_format(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    input_path = tmp_path / "scan.json"
+    input_path.write_text(
+        json.dumps(
+            {
+                "hosts": [
+                    {
+                        "addresses": [{"address": "192.0.2.10"}],
+                        "ports": [
+                            {
+                                "port": 443,
+                                "protocol": "tcp",
+                                "state": "open",
+                                "service": {
+                                    "name": "https",
+                                    "product": "nginx",
+                                    "version": "1.25",
+                                },
+                            }
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "--log-level",
+            "ERROR",
+            "summarize",
+            "--input",
+            str(input_path),
+            "--format",
+            "markdown",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+    assert "# RECONMIND Summary" in captured.out
+    assert "| 443/tcp: https (nginx 1.25) |" in captured.out
+    assert "confirmed vulnerabilities" in captured.out
+
+
+def test_cli_summarize_json_format_is_valid_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    input_path = tmp_path / "scan.json"
+    input_path.write_text(
+        json.dumps(
+            {
+                "hosts": [
+                    {
+                        "addresses": [{"address": "192.0.2.10"}],
+                        "ports": [
+                            {
+                                "port": 22,
+                                "protocol": "tcp",
+                                "state": "open",
+                                "service": {"name": "ssh"},
+                            }
+                        ],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = main(
+        [
+            "--log-level",
+            "ERROR",
+            "summarize",
+            "--input",
+            str(input_path),
+            "--format",
+            "json",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.err == ""
+
+    report = json.loads(captured.out)
+    assert report["hosts_found"] == 1
+    assert report["hosts"][0]["addresses"] == ["192.0.2.10"]
+    assert report["hosts"][0]["open_ports"] == ["22/tcp: ssh"]
+    assert "confirmed vulnerabilities" in report["note"]
+
+
+def test_cli_summarize_writes_output_and_creates_parent_directory(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    input_path = tmp_path / "scan.json"
+    input_path.write_text('{"hosts": []}', encoding="utf-8")
+    output_path = tmp_path / "reports" / "nested" / "summary.md"
+
+    exit_code = main(
+        [
+            "--log-level",
+            "ERROR",
+            "summarize",
+            "--input",
+            str(input_path),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    assert captured.out == ""
+    assert captured.err == ""
+    assert output_path.read_text(encoding="utf-8").startswith("# RECONMIND Summary")
+
+
+def test_cli_summarize_output_failure_returns_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
+    input_path = tmp_path / "scan.json"
+    input_path.write_text('{"hosts": []}', encoding="utf-8")
+    output_parent = tmp_path / "not-a-directory"
+    output_parent.write_text("file", encoding="utf-8")
+
+    exit_code = main(
+        [
+            "--log-level",
+            "ERROR",
+            "summarize",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_parent / "summary.txt"),
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert exit_code == 2
+    assert captured.out == ""
+    assert "Error:" in captured.err
