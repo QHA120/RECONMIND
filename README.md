@@ -61,6 +61,16 @@ Text output remains the default:
 python -m reconmind summarize --input data/processed/metasploitable.json
 ```
 
+Filter by host address, open port, or service name. Filters can be combined; different filter types are combined with AND logic. Repeat a filter to match any of its values:
+
+```bash
+python -m reconmind summarize \
+  --input data/processed/metasploitable.json \
+  --host 192.168.56.102 \
+  --port 80 \
+  --service http
+```
+
 Generate a structured Markdown report:
 
 ```bash
