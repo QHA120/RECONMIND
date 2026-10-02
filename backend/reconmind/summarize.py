@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 
 class SummaryError(Exception):
@@ -22,6 +22,7 @@ class SummaryOutputError(SummaryError):
 class HostSummary:
     addresses: list[str]
     open_ports: list[str]
+
 
 @dataclass(frozen=True)
 class SummaryResult:
@@ -119,9 +120,7 @@ def build_summary(
         open_ports_payload.sort(
             key=lambda port: (
                 str(port.get("protocol", "")),
-                int(port.get("port"))
-                if isinstance(port.get("port"), int)
-                else float("inf"),
+                int(port.get("port")) if isinstance(port.get("port"), int) else float("inf"),
                 str(port.get("port", "")),
             )
         )
@@ -216,13 +215,9 @@ def write_summary_output(report: str, output_path: Path) -> None:
     try:
         parent.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        raise SummaryOutputError(
-            f"Failed to create output directory '{parent}': {exc}"
-        ) from exc
+        raise SummaryOutputError(f"Failed to create output directory '{parent}': {exc}") from exc
 
     try:
         output_path.write_text(report + "\n", encoding="utf-8")
     except OSError as exc:
-        raise SummaryOutputError(
-            f"Failed to write output file '{output_path}': {exc}"
-        ) from exc
+        raise SummaryOutputError(f"Failed to write output file '{output_path}': {exc}") from exc

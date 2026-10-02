@@ -14,14 +14,29 @@ def _write_scan(tmp_path: Path) -> Path:
                     {
                         "addresses": [{"address": "192.0.2.10", "type": "ipv4"}],
                         "ports": [
-                            {"port": 22, "protocol": "tcp", "state": "open", "service": {"name": "ssh"}},
-                            {"port": 80, "protocol": "tcp", "state": "open", "service": {"name": "http"}},
+                            {
+                                "port": 22,
+                                "protocol": "tcp",
+                                "state": "open",
+                                "service": {"name": "ssh"},
+                            },
+                            {
+                                "port": 80,
+                                "protocol": "tcp",
+                                "state": "open",
+                                "service": {"name": "http"},
+                            },
                         ],
                     },
                     {
                         "addresses": [{"address": "192.0.2.20", "type": "ipv4"}],
                         "ports": [
-                            {"port": 443, "protocol": "tcp", "state": "open", "service": {"name": "https"}},
+                            {
+                                "port": 443,
+                                "protocol": "tcp",
+                                "state": "open",
+                                "service": {"name": "https"},
+                            },
                         ],
                     },
                 ]
@@ -44,7 +59,12 @@ def test_cli_summarize_representative_payload(
                 ],
                 "ports": [
                     {"port": 80, "protocol": "tcp", "state": "open", "service": {"name": "http"}},
-                    {"port": 22, "protocol": "tcp", "state": "open", "service": {"name": "ssh", "product": "OpenSSH", "version": "9.2p1"}},
+                    {
+                        "port": 22,
+                        "protocol": "tcp",
+                        "state": "open",
+                        "service": {"name": "ssh", "product": "OpenSSH", "version": "9.2p1"},
+                    },
                     {"port": 443, "protocol": "tcp", "state": "closed"},
                 ],
             }
@@ -70,12 +90,33 @@ def test_cli_summarize_no_hosts(tmp_path: Path, capsys: pytest.CaptureFixture) -
     captured = capsys.readouterr()
     assert exit_code == 0
     assert captured.err == ""
-    assert captured.out == "Hosts found: 0\n\nNote: These are observed Nmap service data, not confirmed vulnerabilities.\n"
+    assert (
+        captured.out
+        == (
+            "Hosts found: 0\n"
+            "\n"
+            "Note: These are observed Nmap service data, not confirmed vulnerabilities.\n"
+        )
+    )
 
 
-def test_cli_summarize_missing_optional_fields(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_summarize_missing_optional_fields(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     input_path = tmp_path / "minimal.json"
-    input_path.write_text(json.dumps({"hosts": [{"addresses": [{"address": "198.51.100.20"}], "ports": [{"port": 443, "protocol": "tcp", "state": "open"}]}]}), encoding="utf-8")
+    input_path.write_text(
+        json.dumps(
+            {
+                "hosts": [
+                    {
+                        "addresses": [{"address": "198.51.100.20"}],
+                        "ports": [{"port": 443, "protocol": "tcp", "state": "open"}],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
     exit_code = main(["--log-level", "ERROR", "summarize", "--input", str(input_path)])
     captured = capsys.readouterr()
     assert exit_code == 0
@@ -93,7 +134,9 @@ def test_cli_summarize_missing_input_returns_error(capsys: pytest.CaptureFixture
     assert "Error: Input file does not exist" in captured.err
 
 
-def test_cli_summarize_invalid_json_returns_error(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_summarize_invalid_json_returns_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     bad_json = tmp_path / "bad.json"
     bad_json.write_text("{", encoding="utf-8")
     exit_code = main(["--log-level", "ERROR", "summarize", "--input", str(bad_json)])
@@ -110,7 +153,9 @@ def test_cli_summarize_requires_input_argument() -> None:
 
 def test_cli_summarize_markdown_format(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
     input_path = _write_scan(tmp_path)
-    exit_code = main(["--log-level", "ERROR", "summarize", "--input", str(input_path), "--format", "markdown"])
+    exit_code = main(
+        ["--log-level", "ERROR", "summarize", "--input", str(input_path), "--format", "markdown"]
+    )
     captured = capsys.readouterr()
     assert exit_code == 0
     assert captured.err == ""
@@ -118,9 +163,13 @@ def test_cli_summarize_markdown_format(tmp_path: Path, capsys: pytest.CaptureFix
     assert "| 22/tcp: ssh |" in captured.out
 
 
-def test_cli_summarize_json_format_is_valid_json(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_summarize_json_format_is_valid_json(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     input_path = _write_scan(tmp_path)
-    exit_code = main(["--log-level", "ERROR", "summarize", "--input", str(input_path), "--format", "json"])
+    exit_code = main(
+        ["--log-level", "ERROR", "summarize", "--input", str(input_path), "--format", "json"]
+    )
     captured = capsys.readouterr()
     assert exit_code == 0
     report = json.loads(captured.out)
@@ -128,10 +177,24 @@ def test_cli_summarize_json_format_is_valid_json(tmp_path: Path, capsys: pytest.
     assert report["hosts"][0]["open_ports"] == ["22/tcp: ssh", "80/tcp: http"]
 
 
-def test_cli_summarize_writes_output_and_creates_parent_directory(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_summarize_writes_output_and_creates_parent_directory(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     input_path = _write_scan(tmp_path)
     output_path = tmp_path / "reports" / "nested" / "summary.md"
-    exit_code = main(["--log-level", "ERROR", "summarize", "--input", str(input_path), "--format", "markdown", "--output", str(output_path)])
+    exit_code = main(
+        [
+            "--log-level",
+            "ERROR",
+            "summarize",
+            "--input",
+            str(input_path),
+            "--format",
+            "markdown",
+            "--output",
+            str(output_path),
+        ]
+    )
     captured = capsys.readouterr()
     assert exit_code == 0
     assert captured.out == ""
@@ -139,11 +202,23 @@ def test_cli_summarize_writes_output_and_creates_parent_directory(tmp_path: Path
     assert output_path.read_text(encoding="utf-8").startswith("# RECONMIND Summary")
 
 
-def test_cli_summarize_output_failure_returns_error(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_summarize_output_failure_returns_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     input_path = _write_scan(tmp_path)
     output_parent = tmp_path / "not-a-directory"
     output_parent.write_text("file", encoding="utf-8")
-    exit_code = main(["--log-level", "ERROR", "summarize", "--input", str(input_path), "--output", str(output_parent / "summary.txt")])
+    exit_code = main(
+        [
+            "--log-level",
+            "ERROR",
+            "summarize",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_parent / "summary.txt"),
+        ]
+    )
     captured = capsys.readouterr()
     assert exit_code == 2
     assert captured.out == ""
@@ -152,7 +227,9 @@ def test_cli_summarize_output_failure_returns_error(tmp_path: Path, capsys: pyte
 
 def test_cli_summarize_host_filter(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
     input_path = _write_scan(tmp_path)
-    exit_code = main(["--log-level", "ERROR", "summarize", "--input", str(input_path), "--host", "192.0.2.20"])
+    exit_code = main(
+        ["--log-level", "ERROR", "summarize", "--input", str(input_path), "--host", "192.0.2.20"]
+    )
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "Hosts found: 1" in captured.out
@@ -160,9 +237,23 @@ def test_cli_summarize_host_filter(tmp_path: Path, capsys: pytest.CaptureFixture
     assert "192.0.2.10" not in captured.out
 
 
-def test_cli_summarize_port_and_service_filters_are_composable(tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+def test_cli_summarize_port_and_service_filters_are_composable(
+    tmp_path: Path, capsys: pytest.CaptureFixture
+) -> None:
     input_path = _write_scan(tmp_path)
-    exit_code = main(["--log-level", "ERROR", "summarize", "--input", str(input_path), "--port", "80", "--service", "HTTP"])
+    exit_code = main(
+        [
+            "--log-level",
+            "ERROR",
+            "summarize",
+            "--input",
+            str(input_path),
+            "--port",
+            "80",
+            "--service",
+            "HTTP",
+        ]
+    )
     captured = capsys.readouterr()
     assert exit_code == 0
     assert "Hosts found: 1" in captured.out
