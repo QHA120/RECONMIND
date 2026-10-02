@@ -7,3 +7,6 @@ __pycache__/
 data/processed/
 
 data/raw/
+
+# Generated local reports
+reports/
